@@ -327,24 +327,33 @@
     }
 
     const now = audioCtx.currentTime;
-    const beepCount = 3;
-    const beepDuration = 0.12;
-    const gap = 0.08;
-    const baseFreq = 880;
+
+    // User request: louder + lasts ~10 seconds.
+    // Note: actual loudness is still bounded by system volume and browser policies.
+    const totalSeconds = 10;
+    const beepDuration = 0.28;
+    const gap = 0.12;
+    const period = beepDuration + gap;
+    const beepCount = Math.max(1, Math.floor(totalSeconds / period));
+    const peakGain = 0.75;
 
     for (let i = 0; i < beepCount; i += 1) {
-      const t0 = now + i * (beepDuration + gap);
+      const t0 = now + i * period;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
+
       osc.type = "sine";
-      osc.frequency.value = baseFreq;
+      osc.frequency.value = i % 2 === 0 ? 880 : 660;
+
       gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(0.3, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(peakGain, t0 + 0.012);
       gain.gain.exponentialRampToValueAtTime(0.0001, t0 + beepDuration);
+
       osc.connect(gain);
       gain.connect(audioCtx.destination);
+
       osc.start(t0);
-      osc.stop(t0 + beepDuration + 0.01);
+      osc.stop(t0 + beepDuration + 0.02);
     }
   }
 
