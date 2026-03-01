@@ -357,6 +357,42 @@
     }
   }
 
+  function restEndAlarm() {
+    if (!audioCtx) return;
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
+
+    const now = audioCtx.currentTime;
+
+    // Rest-end alarm: different tone pattern, lasts 15 seconds.
+    const totalSeconds = 15;
+    const beepDuration = 0.35;
+    const gap = 0.15;
+    const period = beepDuration + gap;
+    const beepCount = Math.max(1, Math.floor(totalSeconds / period));
+    const peakGain = 0.7;
+
+    for (let i = 0; i < beepCount; i += 1) {
+      const t0 = now + i * period;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = "triangle";
+      osc.frequency.value = i % 3 === 0 ? 523 : i % 3 === 1 ? 659 : 784;
+
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(peakGain, t0 + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + beepDuration);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(t0);
+      osc.stop(t0 + beepDuration + 0.02);
+    }
+  }
+
   function finalizeCurrentPhase({ endedAtMs, isCatchUp }) {
     if (!activeState) return;
     const startedAtMs = activeState.phaseStartedAtMs;
@@ -454,6 +490,8 @@
       if (!isCatchUp) showNote("Work finished. Rest started.");
       return;
     }
+
+    if (!isCatchUp) restEndAlarm();
 
     closeDescriptionModal();
     setReadyPhase({
